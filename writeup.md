@@ -9,6 +9,21 @@ The goals / steps of this project are the following:
 * Test that the model successfully drives around track one without leaving the road
 * Summarize the results with a written report
 
+[//]: # (Image References)
+
+[centre_lane]: ./writeup_images/centre_lane.jpg (centre_lane)
+[counter]: ./writeup_images/counter.jpg (counter)
+[recovery_1]: ./writeup_images/recovery_1.jpg (recovery_1)
+[recovery_2]: ./writeup_images/recovery_2.jpg (recovery_2)
+[smooth_curve]: ./writeup_images/smooth_curve.jpg (smooth_curve)
+[augment_left]: ./writeup_images/augment_left.jpg (augment_left)
+[augment_centre]: ./writeup_images/augment_centre.jpg (augment_centre)
+[augment_right]: ./writeup_images/augment_right.jpg (augment_right)
+[flipped_augment_left]: ./writeup_images/flipped_augment_left.jpg (flipped_augment_left)
+[flipped_augment_centre]: ./writeup_images/flipped_augment_centre.jpg (flipped_augment_centre)
+[flipped_augment_right]: ./writeup_images/flipped_augment_right.jpg (flipped_augment_right)
+[model_history]: ./writeup_images/model_history.png (model_history)
+
 ## Rubric Points
 ### Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/432/view) individually and describe how I addressed each point in my implementation.  
 
@@ -66,9 +81,9 @@ The model was trained and validated on different data sets to ensure that the mo
 
 #### 3. Model parameter tuning
 
-The model used an adam optimizer, so the learning rate was not tuned manually (model.py line 102).
+The model used an Adam optimizer, so the learning rate was not tuned manually (model.py line 102).
 
-For training, I used a batch size of 64 and 10 epochs.
+For training, I used a batch size of 64 and trained for 10 epochs.
 
 #### 4. Appropriate training data
 
@@ -82,44 +97,89 @@ TThe model was trained and validated on different data sets to keep the vehicle 
 
 #### 1. Solution Design Approach
 
+My overall strategy for deriving a model architecture was to consider popular convolutional network architectures from academia and industry, and modify it for my own use case. Some of these include the NVIDIA DAVE-2 architecture, LeNet-5, VGGNet etc.
 
+I based my network on NVIDIA's DAVE-2 architecture as this model predicts steering angle with great accuracy using images as input. I used the Keras *Sequential* API to achieve this.
 
----
-The overall strategy for deriving a model architecture was to ...
+I split my data into training and validation sets and ran this model without modification. I found the mean-squared error was low on the training set and high on the validation set, i.e. my model was overfitting. To combat this, I added dropout layers.
 
-My first step was to use a convolution neural network model similar to the ... I thought this model might be appropriate because ...
+I then normalised my data to improve prediction accuracy and shuffled the data. To generate more data, I used some data augmentation techniques in my generator. One was to use the centre, left and right images with some camera offset to simulate recovery driving. The other technique was to flip the images and steering angles to simulate counter clockwise driving.
 
-In order to gauge how well the model was working, I split my image and steering angle data into a training and validation set. I found that my first model had a low mean squared error on the training set but a high mean squared error on the validation set. This implied that the model was overfitting. 
+The vehicle was driving fairly well after this, but my code was saving the model after each epoch. So I created a *ModelCheckpoint* callback to save the model with the least *val_loss* only.
 
-To combat the overfitting, I modified the model so that ...
+To reduce memory usage, I implemented a Python generator (process_data.py lines 99-132). It loads the samples in batches from the CSV so my code didn't have to load the complete training dataset in memory (which was over 500 MB at this point!). 
 
-Then I ... 
+I also added the capability to load the model if it was saved previously (model.py lines 54-56 and 63-65). I found the Adam optimiser was resetting the learning rate if I loaded a saved model (which was retraining the model from scratch), so I used the ```initial_epochs```  parameter in my ```model.fit_generator()``` function.
 
-The final step was to run the simulator to see how well the car was driving around track one. There were a few spots where the vehicle fell off the track... to improve the driving behavior in these cases, I ....
-
-At the end of the process, the vehicle is able to drive autonomously around the track without leaving the road.
+At the end of the process, the vehicle was able to drive autonomously around the track without leaving the road.
 
 #### 2. Final Model Architecture
 
-The final model architecture (model.py lines 18-24) consisted of a convolution neural network with the following layers and layer sizes ...
+The final model architecture (model.py lines 18-24) consisted of a convolution neural network with the following layers and layer sizes:
 
-Here is a visualization of the architecture (note: visualizing the architecture is optional according to the project rubric)
+|Layer (type)             |    Output Shape          |    Param #   |
+|-------------------------|--------------------------|--------------|
+|lambda_1 (Lambda)        |    (None, 160, 320, 3)   |    0         |
+|cropping2d_1 (Cropping2D)|    (None, 100, 320, 3)   |    0         |
+|conv2d_1 (Conv2D)        |    (None, 48, 158, 24)   |    1824      |
+|conv2d_2 (Conv2D)        |    (None, 22, 77, 36)    |    21636     |
+|conv2d_3 (Conv2D)        |    (None, 9, 37, 48)     |    43248     |
+|conv2d_4 (Conv2D)        |    (None, 7, 35, 64)     |    27712     |
+|conv2d_5 (Conv2D)        |    (None, 5, 33, 64)     |    36928     |
+|flatten_1 (Flatten)      |    (None, 10560)         |    0         |
+|dense_1 (Dense)          |    (None, 100)           |    1056100   |
+|dropout_1 (Dropout)      |    (None, 100)           |    0         |
+|dense_2 (Dense)          |    (None, 50)            |    5050      |
+|dropout_2 (Dropout)      |    (None, 50)            |    0         |
+|dense_3 (Dense)          |    (None, 10)            |    510       |
+|dropout_3 (Dropout)      |    (None, 10)            |    0         |
+|dense_4 (Dense)          |    (None, 1)             |    11        |
+
+Total parameters: 1,193,019
 
 #### 3. Creation of the Training Set & Training Process
 
-To capture good driving behavior, I first recorded two laps on track one using center lane driving. Here is an example image of center lane driving:
+As mentioned previously, I used the following runs to generate my training data:
 
-I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to .... These images show what a recovery looks like starting from ... :
+1. Two laps of centre lane driving, which looked like this:
 
-Then I repeated this process on track two in order to get more data points.
+![centre_lane]
 
-To augment the data sat, I also flipped images and angles thinking that this would ... For example, here is an image that has then been flipped:
+2. One lap of counter-clockwise driving:
 
-Etc ....
+![counter]
 
-After the collection process, I had X number of data points. I then preprocessed this data by ...
+3. 1 lap of recovery driving. The left image is the start of the recovery and the right image is the recovered position:
 
+![recovery_1] ![recovery_2]
 
-I finally randomly shuffled the data set and put Y% of the data into a validation set. 
+4. 1 lap of smooth curve driving. The image below shows the vehicle driven by myself staying central while navigating a sharp turn:
 
-I used this training data for training the model. The validation set helped determine if the model was over or under fitting. The ideal number of epochs was Z as evidenced by ... I used an adam optimizer so that manually training the learning rate wasn't necessary.
+![smooth_curve]
+
+I used a generator ```train_generator()``` to feed training data to the model. I also used a ```valid_generator()``` to feed validation data to the model which works identically to the training generator. It consists of the following steps:
+
+- Shuffling the data.
+
+- Loading data in batches of 64 samples.
+
+- I used the centre, left and right images with a +/-0.2 steering angle offset to augment the training data. An example:
+
+![augment_left] ![augment_centre] ![augment_right]
+
+- I flipped the images and angles thinking that this would generate even more data to simulate counter-clockwise driving. For example, here are the above images flipped:
+
+![flipped_augment_left] ![flipped_augment_centre] ![flipped_augment_right]
+
+I used a training/validation split of 80:20 using ```sklearn```'s ```train_test_split()``` API and fed this data into the model for 10 epochs. As the training history below shows, the validation loss didn't improve after 8 epochs hence I used 10 epochs to be safe. Using the ```ModelCheckpoint``` callback, I only saved the model with the lowest *val_loss*.
+
+![model_history]
+
+Since I used an Adam optimiser, I didn't need to manually tune the learning rate.
+
+### Simulation
+
+#### 1. Correct navigation on the test data
+
+*video.mp4* shows the vehicle driving on track 1 using the trained model. As the video shows, the vehicle completes a full lap around the track while staying on the road.
+
