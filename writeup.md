@@ -36,7 +36,7 @@ My project includes the following files:
 * model.py containing the script to create and train the model
 * drive.py for driving the car in autonomous mode
 * model.h5 containing a trained convolution neural network 
-* writeup_report.md summarizing the results
+* writeup.md summarizing the results
 * video.mp4 showing the model driving the car around the track
 
 #### 2. Submission includes functional code
@@ -47,7 +47,7 @@ python drive.py model.h5
 
 #### 3. Submission code is usable and readable
 
-The model.py and process_data.py files contain the code for training and saving the convolution neural network. process_data.py was contains functions to pre-process the data and also contains the generator used to feed data into the model, while model.py shows the pipeline I used for training and validating the model, and contains comments to explain how the code works.
+The model.py and process_data.py files contain the code for training and saving the convolution neural network. process_data.py contains functions to pre-process the data and also contains the generator used to feed data into the model, while model.py shows the pipeline I used for training and validating the model, and contains comments to explain how the code works.
 
 ### Model Architecture and Training Strategy
 
@@ -55,7 +55,7 @@ The model.py and process_data.py files contain the code for training and saving 
 
 I used a modified version of NVIDIA's DAVE-2 architecture ([link to paper](https://arxiv.org/pdf/1604.07316v1.pdf)). 
 
-The first layer is a Keras lambda layer for input normalisation. I normalised the input images to have zero mean and equal variance (model.py line 73).
+The first layer is a Keras ```Lambda``` layer for input normalisation. I normalised the input images to have zero mean and equal variance (model.py line 73).
 
 The next layer is a *Cropping2D* layer to remove the top 40 pixels and bottom 20 pixels of the image. I did this to discard the parts of the frame that are not relevant to driving a vehicle (e.g. car bonnet, sky etc.). The output of this layer is a normalised 100x320 image (model.py line 76).
 
@@ -63,7 +63,7 @@ Next there are 3 convolutional layers with 5x5 kernel size, 2x2 strides, 'valid'
 
 Then there are 2 convolutional layers with 3x3 kernal size, 1x1 stride, 'valid' padding, ReLU activation and 64 depth size (model.py 84-85).
 
-I flattened the output of the convolutional layers and implemented 3 fully connected layers of sizes 100, 50 and 10 and using Relu activation units. I also added dropout layers between each fully connected layer with a 0.5 dropout rate to reduce overfitting (model.py lines 88-96).
+I flattened the output of the convolutional layers and implemented 3 fully connected layers of sizes 100, 50 and 10 and using Relu activation units. I also added dropout layers between each fully connected layer with a 0.5 dropout rate to reduce overfitting while training (model.py lines 88-96).
 
 The output layer uses tanh activation instead of ReLU to limit the range of the output between -1 and +1 as this works better for an output like steering angle (model.py line 99).
 
@@ -87,7 +87,7 @@ For training, I used a batch size of 64 and trained for 10 epochs.
 
 #### 4. Appropriate training data
 
-TThe model was trained and validated on different data sets to keep the vehicle on the track. This consisted of the following runs:
+The model was trained and validated on different data sets to keep the vehicle on the track. This consisted of the following runs:
 - 2 laps of centre lane driving
 - 1 lap of counter-clockwise driving
 - 1 lap of recovery driving
@@ -97,9 +97,9 @@ TThe model was trained and validated on different data sets to keep the vehicle 
 
 #### 1. Solution Design Approach
 
-My overall strategy for deriving a model architecture was to consider popular convolutional network architectures from academia and industry, and modify it for my own use case. Some of these include the NVIDIA DAVE-2 architecture, LeNet-5, VGGNet etc.
+My overall strategy for deriving a model architecture was to consider popular convolutional network architectures from academia and industry, and modify it for my own use case. Some of these include DAVE-2, LeNet-5, VGGNet etc.
 
-I based my network on NVIDIA's DAVE-2 architecture as this model predicts steering angle with great accuracy using images as input. I used the Keras *Sequential* API to achieve this.
+I based my network on NVIDIA's DAVE-2 architecture as this model predicts steering angle with great accuracy using images as input. I used the Keras ```Sequential``` API to achieve this.
 
 I split my data into training and validation sets and ran this model without modification. I found the mean-squared error was low on the training set and high on the validation set, i.e. my model was overfitting. To combat this, I added dropout layers.
 
