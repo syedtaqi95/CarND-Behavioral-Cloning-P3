@@ -27,12 +27,13 @@ import os.path
 
 from process_data import process_csv, data_generator
 
-TRAINING_DATA_PATH = "/opt/carnd_p3/training_data/run5_counterclockwise/"
+TRAINING_DATA_PATH = "data/"
 CSV_FILE = TRAINING_DATA_PATH + "driving_log.csv"
 
 # Process the CSV first so it points to the images correctly
+# NOTE Change the split character to \ or / depending on the OS file path convention
 try:
-    process_csv(DATA_PATH=TRAINING_DATA_PATH, original_char="\\", new_char="/")
+    process_csv(DATA_PATH=TRAINING_DATA_PATH, original_char="/", new_char="/")
 except:
     # Load the default data located in /opt/carnd-p3/data/
     process_csv(DATA_PATH="/opt/carnd_p3/data/", original_char="/", new_char="/")
@@ -49,8 +50,10 @@ with open(CSV_FILE) as csvfile:
 # Split the data into training and validation sets
 train_samples, validation_samples = train_test_split(samples, test_size=0.2)
 
-# Set batch size
-batch_size=64
+# Set batch size and epochs
+batch_size = 64
+initial_epoch = 0 # Change this if retraining model
+epochs = 10 + initial_epoch
 
 # Compile and train the model using the generator
 train_generator = data_generator(train_samples, batch_size=batch_size)
@@ -59,8 +62,10 @@ validation_generator = data_generator(validation_samples, batch_size=batch_size)
 # If the model exists already then use it
 if os.path.isfile("model.h5"):
     model = load_model("model.h5")
+    print("Previously trained model found and loaded.")
 else:
     # Create a modified version of Nvidia's DAVE-2 architecture in Keras
+    print("Creating new model...")
     model = Sequential()
     input_shape=(160, 320, 3)
 
@@ -92,27 +97,33 @@ else:
 
     # Output layer with tanh activation
     model.add(Dense(1, activation='tanh'))
+    
+    # Compile the model
+    model.compile(optimizer="adam", loss="mse")
 
 # Print model summary
 print_summary(model)
 
-# Compile the model
-model.compile(optimizer="adam", loss="mse")
-
 # Add checkpoint to save the best model trained after each epoch
-checkpoint = ModelCheckpoint("model.h5", monitor="val_loss", 
-                             verbose=1, save_best_only=True, mode='min')
+checkpoint = ModelCheckpoint("model.h5", monitor="val_loss", verbose=1, 
+                             save_best_only=True, mode='min', save_weights_only=False)
 
 # Fit the model on the training data
+print("Training model...")
+
 history_object = model.fit_generator(train_generator, 
                                      steps_per_epoch=ceil(len(train_samples)/batch_size), 
                                      validation_data=validation_generator, 
                                      validation_steps=ceil(len(validation_samples)/batch_size), 
                                      callbacks=[checkpoint], 
-                                     epochs=10, 
+                                     epochs=epochs, 
+                                     initial_epoch=initial_epoch, 
                                      verbose=2)
 
-# Plot the training and validation loss for each epoch
+print("Training complete")
+
+# Plot the training and validation loss for each epoch, 
+# Save plot to training data directory
 plt.plot(history_object.history['loss'])
 plt.plot(history_object.history['val_loss'])
 plt.title('model mean squared error loss')
@@ -121,6 +132,5 @@ plt.xlabel('epoch')
 plt.legend(['training set', 'validation set'], loc='upper right')
 plt.savefig(TRAINING_DATA_PATH + "model_history.png")
 
-# Save the model
-model.save("model.h5")
-print("Model saved.")
+print("History plot saved to ", TRAINING_DATA_PATH + "model_history.png")
+
